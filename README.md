@@ -1,35 +1,16 @@
 # Student Examination and Grade Management System
 
-Menu-driven Python OOP application with an SQLite database. Python 3.9+, standard library only.
+Console application for student examination and grade management with SQLite.
 
-## Run
-    python seed_data.py     # optional: loads 6 students, 5 subjects, 1 exam with marks
-    python main.py          # start the application (database: exam_system.db)
-    python -m unittest -v   # run the 14 automated tests
+## Usage
 
-## Files
-| File | Purpose |
-|---|---|
-| `errors.py` | `ValidationError`, `DatabaseError` |
-| `models.py` | `Entity` (abstract), `Person`, `Student`, `Subject`, `Exam`, `SubjectMark`, `Result` |
-| `grading.py` | `GradingScheme` (abstract), `BandGradingScheme`, `PassFailGradingScheme`, `GradeCalculator` |
-| `database.py` | `Database` + repositories (SQL lives only here) |
-| `reports.py` | `ReportCard` (abstract), `TextReportCard`, `CsvReportCard`, `MeritListReport` |
-| `cli.py`, `main.py` | menus and entry point |
+```bash
+# seed data
+python seed_data.py
 
-## OOP concepts
-- **Encapsulation**: protected `_attrs` with validating property setters; private name-mangled IDs (`__student_id`) assignable only once.
-- **Inheritance**: `Student(Person)`; `Person`, `Subject`, `Exam`, `Result` all extend the abstract `Entity`.
-- **Overriding**: `Student.get_role()`, `describe()`, `to_dict()`.
-- **Polymorphism**: `summary()` on every entity; `GradingScheme.grade_for()` (letter bands vs pass/fail); `ReportCard.render()` (text vs CSV).
-- **Abstraction**: abstract `Entity`, `GradingScheme`, `ReportCard`.
-- **Composition**: `Result` holds a `Student`, an `Exam` and one `SubjectMark` per `Subject`; `Exam` holds its subjects.
+# run app
+python main.py
 
-## Business rules
-- Paper maximum = `min(exam max marks, subject max marks)`, fixed when the subject is assigned to the exam.
-- Marks must be numeric, `>= 0` and `<=` the paper maximum.
-- Percentage = total obtained / total maximum, rounded to 2 decimals, then graded.
-- Pass overall only if every subject is at least the pass percentage (default 40%, configurable).
-- Ranking: by percentage, competition style (1, 2, 2, 4). Ties are listed by total marks then name. Only complete results are ranked; failed students can be excluded.
-- Grade bands and pass mark are stored in SQL and editable under *Grading Settings*.
-- Deleting a student, subject or exam cascades to the related marks (foreign keys).
+# run tests
+python -m unittest
+```

@@ -9,6 +9,7 @@ from reports import MeritListReport, TextReportCard
 from seed_data import seed
 
 
+# model tests
 class ModelTests(unittest.TestCase):
     def test_inheritance_and_override(self):
         p, s = Person("Asha Rao"), Student("Asha Rao", "CSE", 2, student_id=1)
@@ -24,6 +25,7 @@ class ModelTests(unittest.TestCase):
             with self.assertRaises(ValidationError):
                 bad()
 
+    # test bounds
     def test_grade_boundaries(self):
         g = GradeCalculator()
         cases = {100: "A+", 90: "A+", 89.99: "A", 80: "A", 70: "B", 60: "C", 50: "D", 40: "E",
@@ -37,11 +39,12 @@ class ModelTests(unittest.TestCase):
 
     def test_bad_bands(self):
         with self.assertRaises(ValidationError):
-            BandGradingScheme([(90, "A"), (50, "B")])        # no zero band
+            BandGradingScheme([(90, "A"), (50, "B")])
         with self.assertRaises(ValidationError):
             BandGradingScheme([(0, "F"), (0, "G")])
 
 
+# system tests
 class SystemTests(unittest.TestCase):
     def setUp(self):
         self.db = Database(":memory:")
@@ -55,6 +58,7 @@ class SystemTests(unittest.TestCase):
     def result(self, sid):
         return self.results.load_result(self.students.get(sid), self.exam, self.calc)
 
+    # check marks
     def test_marks_validation(self):
         r = self.result(1)
         sid = self.subjects.all()[0].subject_id
@@ -63,7 +67,7 @@ class SystemTests(unittest.TestCase):
                 r.set_marks(sid, bad)
         lab = [s for s in self.subjects.all() if s.code == "CS204L"][0]
         with self.assertRaises(ValidationError):
-            r.set_marks(lab.subject_id, 51)                  # lab paper max is 50
+            r.set_marks(lab.subject_id, 51)
 
     def test_totals_and_status(self):
         r = self.result(1)
@@ -77,12 +81,13 @@ class SystemTests(unittest.TestCase):
         self.assertEqual([m.subject.code for m in r.failed_subjects], ["CS203"])
         self.assertEqual(r.status, "FAIL")
 
+    # check ranks
     def test_ranking_with_ties(self):
         ranked = self.calc.rank(self.results.results_for_exam(self.exam, self.calc))
         ids = [(e.rank, e.result.student.student_id) for e in ranked]
         self.assertEqual([r for r, _ in ids], [1, 2, 2, 4, 5, 6])
         by_id = {sid: rank for rank, sid in ids}
-        self.assertEqual(by_id[2], by_id[3])                 # tie shares a rank
+        self.assertEqual(by_id[2], by_id[3])
         self.assertEqual(by_id[1], 1)
         passed_only = self.calc.rank(self.results.results_for_exam(self.exam, self.calc), False)
         self.assertNotIn(5, [e.result.student.student_id for e in passed_only])
@@ -118,7 +123,7 @@ class SystemTests(unittest.TestCase):
         self.subjects.delete(1)
         self.assertEqual(len(self.exams.get(1).subjects), 4)
         with self.assertRaises(ValidationError):
-            self.subjects.add(Subject("X", "cs202", 50))     # duplicate code
+            self.subjects.add(Subject("X", "cs202", 50))
 
     def test_report_and_merit(self):
         r = self.result(2)
@@ -128,5 +133,6 @@ class SystemTests(unittest.TestCase):
         self.assertIn("MERIT LIST", MeritListReport(self.exam, ranked).render())
 
 
+# run tests
 if __name__ == "__main__":
     unittest.main()

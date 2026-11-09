@@ -1,4 +1,3 @@
-"""Domain model: Person, Student, Subject, Exam, SubjectMark, Result."""
 from __future__ import annotations
 
 import math
@@ -14,6 +13,7 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _PHONE_RE = re.compile(r"^\+?[0-9][0-9\- ]{6,14}$")
 
 
+# number helpers
 def fmt_num(value: float) -> str:
     return f"{value:g}"
 
@@ -35,9 +35,8 @@ def clean_max_marks(value, label="Maximum marks") -> float:
     return number
 
 
+# base entity
 class Entity(ABC):
-    """Abstract root of all domain objects: each must describe itself."""
-
     @abstractmethod
     def to_dict(self) -> dict: ...
 
@@ -48,17 +47,14 @@ class Entity(ABC):
         return self.summary()
 
 
-# --------------------------------------------------------------------- Person
+# person model
 class Person(Entity):
-    """Base class: common identity and contact details (protected attributes)."""
-
     def __init__(self, name, email="", phone="", address=""):
         self.name = name
         self.email = email
         self.phone = phone
         self.address = address
 
-    # validators (reused by the CLI so prompts can re-ask on bad input)
     @staticmethod
     def clean_name(value) -> str:
         value = " ".join((value or "").split())
@@ -123,13 +119,12 @@ class Person(Entity):
                 "address": self._address}
 
 
+# student model
 class Student(Person):
-    """A student: a Person plus academic information."""
-
     def __init__(self, name, department, semester, email="", phone="", address="",
                  enrollment_year=None, student_id=None):
         super().__init__(name, email, phone, address)
-        self.__student_id = None          # private: assigned once by the database
+        self.__student_id = None
         if student_id is not None:
             self.student_id = student_id
         self.department = department
@@ -184,7 +179,6 @@ class Student(Person):
     @enrollment_year.setter
     def enrollment_year(self, value): self._enrollment_year = self.clean_year(value)
 
-    # --- overriding
     def get_role(self) -> str:
         return "Student"
 
@@ -199,7 +193,7 @@ class Student(Person):
         return data
 
 
-# -------------------------------------------------------------------- Subject
+# subject model
 class Subject(Entity):
     def __init__(self, name, code, max_marks=100, subject_id=None):
         self.__subject_id = None
@@ -258,14 +252,8 @@ class Subject(Entity):
                 "max_marks": self._max_marks}
 
 
-# ----------------------------------------------------------------------- Exam
+# exam model
 class Exam(Entity):
-    """An examination and the subjects (papers) assigned to it.
-
-    The maximum for a paper is min(exam.max_marks, subject.max_marks), fixed
-    when the subject is assigned.
-    """
-
     def __init__(self, name, exam_type, exam_date, max_marks=100, exam_id=None):
         self.__exam_id = None
         if exam_id is not None:
@@ -337,7 +325,6 @@ class Exam(Entity):
     @max_marks.setter
     def max_marks(self, value): self._max_marks = clean_max_marks(value, "Exam maximum marks")
 
-    # --- composition of subjects
     def add_subject(self, subject: Subject, paper_max=None) -> float:
         if subject.subject_id is None:
             raise ValidationError("Subject must be saved before it is assigned.")
@@ -351,7 +338,6 @@ class Exam(Entity):
         return paper_max
 
     def load_paper(self, subject: Subject, paper_max: float) -> None:
-        """Restore a stored paper exactly as saved (used by the repository)."""
         self._papers[subject.subject_id] = (subject, float(paper_max))
 
     def remove_subject(self, subject_id: int) -> None:
@@ -383,10 +369,8 @@ class Exam(Entity):
                              for s in self.subjects]}
 
 
-# --------------------------------------------------------------------- Result
+# subject marks
 class SubjectMark:
-    """Marks of one student in one subject of an exam (validated)."""
-
     def __init__(self, subject: Subject, max_marks: float, obtained=None):
         self._subject = subject
         self._max_marks = float(max_marks)
@@ -424,12 +408,8 @@ class SubjectMark:
         return None if self._obtained is None else self._obtained / self._max_marks * 100
 
 
+# student result
 class Result(Entity):
-    """One student's result in one exam.
-
-    Composed of a Student, an Exam and one SubjectMark (-> Subject) per paper.
-    """
-
     def __init__(self, student: Student, exam: Exam, calculator: GradeCalculator | None = None):
         self._student = student
         self._exam = exam

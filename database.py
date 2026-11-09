@@ -1,4 +1,3 @@
-"""SQLite persistence: Database wrapper plus one repository per entity."""
 from __future__ import annotations
 
 import sqlite3
@@ -41,9 +40,8 @@ CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
 
 
+# database connection
 class Database:
-    """Thin wrapper around a SQLite connection (foreign keys enforced)."""
-
     def __init__(self, path: str = "exam_system.db"):
         try:
             self._conn = sqlite3.connect(path)
@@ -80,7 +78,7 @@ class Database:
         self._conn.close()
 
 
-# ------------------------------------------------------------------ Students
+# student repo
 class StudentRepository:
     def __init__(self, db: Database):
         self._db = db
@@ -129,7 +127,7 @@ class StudentRepository:
         return self._db.execute("DELETE FROM students WHERE student_id=?", (student_id,)).rowcount > 0
 
 
-# ------------------------------------------------------------------ Subjects
+# subject repo
 class SubjectRepository:
     def __init__(self, db: Database):
         self._db = db
@@ -165,7 +163,7 @@ class SubjectRepository:
         return self._db.execute("DELETE FROM subjects WHERE subject_id=?", (subject_id,)).rowcount > 0
 
 
-# --------------------------------------------------------------------- Exams
+# exam repo
 class ExamRepository:
     def __init__(self, db: Database):
         self._db = db
@@ -200,19 +198,18 @@ class ExamRepository:
         return self._db.execute("DELETE FROM exams WHERE exam_id=?", (exam_id,)).rowcount > 0
 
     def assign_subject(self, exam: Exam, subject: Subject, paper_max=None) -> float:
-        paper_max = exam.add_subject(subject, paper_max)   # validates first
+        paper_max = exam.add_subject(subject, paper_max)
         self._db.execute("INSERT INTO exam_subjects(exam_id,subject_id,max_marks) VALUES(?,?,?)",
                          (exam.exam_id, subject.subject_id, paper_max))
         return paper_max
 
     def remove_subject(self, exam: Exam, subject_id: int) -> None:
-        """Removes the paper and (via ON DELETE CASCADE) its recorded marks."""
         self._db.execute("DELETE FROM exam_subjects WHERE exam_id=? AND subject_id=?",
                          (exam.exam_id, subject_id))
         exam.remove_subject(subject_id)
 
 
-# ------------------------------------------------------------------- Results
+# result repo
 class ResultRepository:
     def __init__(self, db: Database, students: StudentRepository, exams: ExamRepository):
         self._db, self._students, self._exams = db, students, exams
@@ -226,7 +223,6 @@ class ResultRepository:
         return result
 
     def save_marks(self, result: Result, subject_id: int) -> None:
-        """Persist the (already validated) mark held by the result object."""
         mark = result.mark_for(subject_id)
         if not mark.is_entered:
             raise ValidationError("No marks to save.")
@@ -254,7 +250,7 @@ class ResultRepository:
         return [self.load_result(student, self._exams.get(r["exam_id"]), calc) for r in rows]
 
 
-# ------------------------------------------------------------ Grading config
+# grading repo
 class GradingRepository:
     def __init__(self, db: Database):
         self._db = db
@@ -264,7 +260,7 @@ class GradingRepository:
         return [(r["min_percentage"], r["grade"]) for r in rows]
 
     def set_bands(self, bands) -> None:
-        validated = BandGradingScheme(bands).bands          # raises ValidationError if bad
+        validated = BandGradingScheme(bands).bands
         self._db.execute("DELETE FROM grading_scale")
         for minimum, grade in validated:
             self._db.execute("INSERT INTO grading_scale(grade,min_percentage) VALUES(?,?)", (grade, minimum))
@@ -277,7 +273,7 @@ class GradingRepository:
         return float(self._db.query("SELECT value FROM settings WHERE key='pass_percentage'")[0]["value"])
 
     def set_pass_percentage(self, value) -> None:
-        calc = GradeCalculator(pass_percentage=value)       # validates range
+        calc = GradeCalculator(pass_percentage=value)
         self._db.execute("UPDATE settings SET value=? WHERE key='pass_percentage'",
                          (str(calc.pass_percentage),))
 

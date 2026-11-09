@@ -1,4 +1,3 @@
-"""Grading strategies and the GradeCalculator (grades, pass/fail, ranking)."""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -7,9 +6,8 @@ from typing import NamedTuple
 from errors import ValidationError
 
 
+# grading scheme
 class GradingScheme(ABC):
-    """Abstract strategy: turns a percentage into a grade label."""
-
     @abstractmethod
     def grade_for(self, percentage: float) -> str: ...
 
@@ -17,9 +15,8 @@ class GradingScheme(ABC):
     def describe(self) -> list[str]: ...
 
 
+# letter bands
 class BandGradingScheme(GradingScheme):
-    """Configurable letter-grade bands, e.g. 90+ -> A+."""
-
     DEFAULT_BANDS = ((90, "A+"), (80, "A"), (70, "B"), (60, "C"),
                      (50, "D"), (40, "E"), (0, "F"))
 
@@ -27,6 +24,7 @@ class BandGradingScheme(GradingScheme):
         raw = [(float(m), str(g).strip()) for m, g in (bands or self.DEFAULT_BANDS)]
         self._bands = self._validate(raw)
 
+    # validate bands
     @staticmethod
     def _validate(bands):
         if not bands:
@@ -65,9 +63,8 @@ class BandGradingScheme(GradingScheme):
         return lines
 
 
+# pass fail scheme
 class PassFailGradingScheme(GradingScheme):
-    """Alternative scheme (polymorphism): only PASS / FAIL labels."""
-
     def __init__(self, threshold: float = 40.0):
         self._threshold = threshold
 
@@ -78,14 +75,14 @@ class PassFailGradingScheme(GradingScheme):
         return [f"{self._threshold:g} and above : PASS", f"Below {self._threshold:g} : FAIL"]
 
 
+# ranked item
 class RankedEntry(NamedTuple):
     rank: int
     result: object
 
 
+# grade calculator
 class GradeCalculator:
-    """Grades, pass/fail decisions and rankings, using a pluggable scheme."""
-
     def __init__(self, scheme: GradingScheme | None = None, pass_percentage: float = 40.0):
         self._scheme = scheme or BandGradingScheme()
         self.pass_percentage = pass_percentage
@@ -108,18 +105,16 @@ class GradeCalculator:
     def grade(self, percentage: float) -> str:
         return self._scheme.grade_for(round(percentage, 2))
 
+    # check subject
     def subject_passed(self, obtained: float, maximum: float) -> bool:
         return (obtained / maximum) * 100 >= self._pass_percentage - 1e-9
 
+    # check overall
     def overall_passed(self, result) -> bool:
-        """Pass overall only if every subject is entered and individually passed."""
         return result.is_complete and not result.failed_subjects
 
+    # calc ranks
     def rank(self, results, include_failed: bool = True) -> list[RankedEntry]:
-        """Competition ranking (1, 2, 2, 4): equal percentages share a rank.
-
-        Only complete results are ranked. Ties are listed by total marks, then name.
-        """
         pool = [r for r in results if r.is_complete]
         if not include_failed:
             pool = [r for r in pool if self.overall_passed(r)]

@@ -1,4 +1,3 @@
-"""Report card and merit list rendering (abstract ReportCard, two formats)."""
 from __future__ import annotations
 
 import csv
@@ -11,9 +10,8 @@ from models import Result, fmt_num
 W = 76
 
 
+# report card base
 class ReportCard(ABC):
-    """Abstract report card: subclasses decide how it is rendered."""
-
     extension = "txt"
 
     def __init__(self, result: Result, rank: int | None = None, ranked_total: int | None = None):
@@ -26,6 +24,7 @@ class ReportCard(ABC):
         r = self._result
         return f"report_card_S{r.student.student_id}_E{r.exam.exam_id}.{self.extension}"
 
+    # save report
     def save(self, directory: str = "reports") -> str:
         os.makedirs(directory, exist_ok=True)
         path = os.path.join(directory, self.filename())
@@ -39,6 +38,7 @@ class ReportCard(ABC):
         return f"{self._rank} of {self._ranked_total}"
 
 
+# text report
 class TextReportCard(ReportCard):
     extension = "txt"
 
@@ -77,6 +77,7 @@ class TextReportCard(ReportCard):
         return "\n".join(out) + "\n"
 
 
+# csv report
 class CsvReportCard(ReportCard):
     extension = "csv"
 
@@ -102,9 +103,8 @@ class CsvReportCard(ReportCard):
         return buf.getvalue()
 
 
+# merit list
 class MeritListReport:
-    """Formats ranked entries (from GradeCalculator.rank) as a merit list."""
-
     def __init__(self, exam, ranked_entries):
         self._exam, self._entries = exam, ranked_entries
 
@@ -123,6 +123,7 @@ class MeritListReport:
         out.append("Equal percentages share a rank; the next rank is skipped (1, 2, 2, 4).")
         return "\n".join(out) + "\n"
 
+    # export csv
     def to_csv(self) -> str:
         buf = io.StringIO()
         w = csv.writer(buf)

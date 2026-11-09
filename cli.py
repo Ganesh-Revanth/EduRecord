@@ -1,4 +1,3 @@
-"""Menu-driven console interface for the Student Examination & Grade Management System."""
 from __future__ import annotations
 
 import os
@@ -12,17 +11,17 @@ from models import (EXAM_TYPES, Exam, Person, Student, Subject, clean_max_marks,
 from reports import CsvReportCard, MeritListReport, TextReportCard
 
 
-# ------------------------------------------------------------------ helpers
+# input helper
 def ask_field(label, cleaner, default=None):
-    """Prompt until `cleaner` accepts the input. Blank keeps `default` ('-' clears it)."""
     suffix = f" [{default}]" if default not in (None, "") else ""
     while True:
         raw = input(f"{label}{suffix}: ").strip()
-        if default is not None:
-            if raw == "":
-                return cleaner(str(default)) if default != "" else cleaner("")
-            if raw == "-":
-                raw = ""
+        if default not in (None, "") and raw == "":
+            return cleaner(str(default))
+        if default == "" and raw == "":
+            return cleaner("")
+        if default is not None and raw == "-":
+            raw = ""
         try:
             return cleaner(raw)
         except ValidationError as exc:
@@ -55,8 +54,8 @@ def print_table(headers, rows):
         print("  ".join(f"{str(c):<{w}}" for c, w in zip(r, widths)))
 
 
+# menu loop
 def run_menu(title, options, back_label="Back"):
-    """Generic menu loop; errors from actions are reported, not fatal."""
     while True:
         print(f"\n===== {title} =====")
         for i, (label, _) in enumerate(options, 1):
@@ -74,7 +73,7 @@ def run_menu(title, options, back_label="Back"):
             print("  [!] Invalid choice.")
 
 
-# ---------------------------------------------------------------------- app
+# cli app
 class ExamManagementApp:
     def __init__(self, db_path="exam_system.db", report_dir="reports"):
         self.db = Database(db_path)
@@ -87,9 +86,9 @@ class ExamManagementApp:
 
     @property
     def calc(self):
-        return self.grading.build_calculator()      # always reflects current configuration
+        return self.grading.build_calculator()
 
-    # ---- pickers
+    # pick helpers
     def pick_student(self) -> Student:
         student = self.students.get(ask_int("Student ID"))
         if not student:
@@ -109,7 +108,6 @@ class ExamManagementApp:
             raise ValidationError("Exam not found.")
         return exam
 
-    # ---- main loop
     def run(self):
         print("\n" + "=" * 60)
         print(" STUDENT EXAMINATION AND GRADE MANAGEMENT SYSTEM")
@@ -130,7 +128,7 @@ class ExamManagementApp:
             self.db.close()
         print("Goodbye!")
 
-    # ================================================================ students
+    # student actions
     def student_menu(self):
         run_menu("STUDENT MANAGEMENT", [
             ("Add student", self.add_student), ("View all students", self.list_students),
@@ -183,7 +181,7 @@ class ExamManagementApp:
             self.students.delete(s.student_id)
             print("  Student deleted.")
 
-    # ================================================================ subjects
+    # subject actions
     def subject_menu(self):
         run_menu("SUBJECT MANAGEMENT", [
             ("Add subject", self.add_subject), ("View subjects", self.list_subjects),
@@ -216,7 +214,7 @@ class ExamManagementApp:
             self.subjects.delete(s.subject_id)
             print("  Subject deleted.")
 
-    # ================================================================== exams
+    # exam actions
     def exam_menu(self):
         run_menu("EXAMINATION MANAGEMENT", [
             ("Create exam", self.create_exam), ("View all exams", self.list_exams),
@@ -277,7 +275,7 @@ class ExamManagementApp:
             self.exams.remove_subject(e, s.subject_id)
             print("  Subject removed from exam.")
 
-    # ================================================================== marks
+    # marks actions
     def marks_menu(self):
         run_menu("MARKS & RESULTS", [
             ("Enter marks (one student, one subject)", lambda: self.enter_marks(False)),
@@ -376,7 +374,7 @@ class ExamManagementApp:
                       r.grade, r.status, ", ".join(m.subject.code for m in r.failed_subjects) or "-")
                      for r in results])
 
-    # ================================================================ ranking
+    # ranking actions
     def merit_list(self):
         exam = self.pick_exam()
         calc = self.calc
@@ -391,7 +389,7 @@ class ExamManagementApp:
                 fh.write(report.to_csv())
             print(f"  Saved to {path}")
 
-    # ================================================================ reports
+    # report actions
     def report_menu(self):
         run_menu("REPORT CARDS", [
             ("Generate report card for one student", self.report_one),
@@ -420,7 +418,7 @@ class ExamManagementApp:
             print(f"  {r.student.name}: {path}")
         print(f"  {len(results)} report card(s) generated.")
 
-    # ================================================================ grading
+    # grading actions
     def grading_menu(self):
         run_menu("GRADING SETTINGS", [
             ("View grading scale", self.show_scale), ("Edit grading scale", self.edit_scale),

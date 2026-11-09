@@ -1,9 +1,7 @@
-"""Custom exceptions shared by every module."""
-
-
+# custom errors
 class ValidationError(ValueError):
-    """Raised when user supplied data is invalid."""
+    pass
 
 
 class DatabaseError(Exception):
-    """Raised when a database operation cannot be completed."""
+    pass
